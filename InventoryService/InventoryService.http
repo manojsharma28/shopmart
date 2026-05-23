@@ -1,0 +1,89 @@
+### InventoryService API Endpoints
+
+@baseUrl = http://localhost:5003
+
+### Health Check - Liveness Probe
+GET {{baseUrl}}/health
+
+### Health Check - Readiness Probe
+GET {{baseUrl}}/health/ready
+
+### Get All Products
+GET {{baseUrl}}/api/inventory/products
+
+### Get Specific Product
+GET {{baseUrl}}/api/inventory/products/prod001
+
+### Check Inventory Availability
+POST {{baseUrl}}/api/inventory/check
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": "prod001",
+      "quantity": 5
+    },
+    {
+      "productId": "prod002",
+      "quantity": 10
+    }
+  ]
+}
+
+### Check Inventory (Out of Stock Example)
+POST {{baseUrl}}/api/inventory/check
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "productId": "prod001",
+      "quantity": 100
+    }
+  ]
+}
+
+### Reserve Stock for Order
+POST {{baseUrl}}/api/inventory/reserve
+Content-Type: application/json
+
+{
+  "orderId": "order-550e8400-e29b-41d4-a716-446655440000",
+  "items": [
+    {
+      "productId": "prod001",
+      "quantity": 2
+    },
+    {
+      "productId": "prod002",
+      "quantity": 5
+    }
+  ]
+}
+
+### Confirm Stock Reservation (After Payment Success)
+POST {{baseUrl}}/api/inventory/confirm/order-550e8400-e29b-41d4-a716-446655440000
+
+### Cancel Stock Reservation (After Payment Failure)
+POST {{baseUrl}}/api/inventory/cancel/order-550e8400-e29b-41d4-a716-446655440000
+
+### Update Stock (Admin Operation)
+PUT {{baseUrl}}/api/inventory/update-stock
+Content-Type: application/json
+
+{
+  "productId": "prod001",
+  "quantityChange": 10,
+  "reason": "Stock replenishment - warehouse receipt"
+}
+
+### Update Stock (Reduce for Damage/Loss)
+PUT {{baseUrl}}/api/inventory/update-stock
+Content-Type: application/json
+
+{
+  "productId": "prod002",
+  "quantityChange": -5,
+  "reason": "Damage during inventory count"
+}

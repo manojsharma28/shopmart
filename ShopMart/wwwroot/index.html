@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ShopMart Cart</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 24px; }
+        h1 { margin-bottom: 0.2em; }
+        .section { margin-bottom: 32px; }
+        table { border-collapse: collapse; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; }
+        th { background: #f4f4f4; }
+        button { cursor: pointer; padding: 8px 12px; }
+        .message { padding: 12px; border-radius: 4px; margin-bottom: 16px; }
+        .success { background: #e6ffed; border: 1px solid #6cc671; }
+        .error { background: #ffe6e6; border: 1px solid #e86b6b; }
+    </style>
+</head>
+<body>
+    <h1>ShopMart</h1>
+    <p>Shopping cart UI using Inventory, Order, Payment, and Notification services.</p>
+
+    <div id="info" class="section"></div>
+
+    <div class="section">
+        <h2>Inventory</h2>
+        <table id="inventory-table">
+            <thead>
+                <tr><th>Product</th><th>Description</th><th>Price</th><th>QuantityStock</th><th>Action</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Cart</h2>
+        <div>
+            <label>Customer ID: <input id="customer-id" value="shopper-001" /></label>
+        </div>
+        <div id="cart-summary"></div>
+        <button id="place-order">Place Order</button>
+    </div>
+
+    <div class="section">
+        <h2>Notifications</h2>
+        <div id="notifications"></div>
+    </div>
+
+    <script>
+        const cart = [];
+        let products = [];
+
+        const info = document.getElementById('info');
+        const inventoryTableBody = document.querySelector('#inventory-table tbody');
+        const cartSummary = document.getElementById('cart-summary');
+        const notifications = document.getElementById('notifications');
+        const customerIdInput = document.getElementById('customer-id');
+        const placeOrderButton = document.getElementById('place-order');
+
+        function showMessage(text, type='success') {
+            info.innerHTML = `<div class="message ${type}">${text}</div>`;
+        }
+
+        function renderInventory() {
+            inventoryTableBody.innerHTML = '';
+            products.forEach(product => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${product.name}</td>
+                    <td>${product.description}</td>
+                    <td>$${product.price.toFixed(2)}</td>
+                    <td>${product.quantityInStock}</td>
+                    <td><button ${product.quantityInStock === 0 ? 'disabled' : ''} data-id="${product.id}">Add</button></td>
+                `;
+                row.querySelector('button').addEventListener('click', () => addToCart(product.id));
+                inventoryTableBody.appendChild(row);
+            });
+        }
+
+        function renderCart() {
+            if (!cart.length) {
+                cartSummary.innerHTML = '<p>Your cart is empty.</p>';
+                return;
+            }
+
+            const lines = cart.map(item => `<li>${item.name} x ${item.quantity} @ $${item.price.toFixed(2)}</li>`).join('');
+            const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            cartSummary.innerHTML = `<ul>${lines}</ul><p><strong>Total:</strong> $${total.toFixed(2)}</p>`;
+        }
+
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product || product.quantityInStock === 0) return;
+            const existing = cart.find(item => item.productId === productId);
+            if (existing) {
+                existing.quantity += 1;
+            } else {
+                cart.push({ productId: product.id, name: product.name, quantity: 1, price: product.price });
+            }
+            showMessage(`${product.name} added to cart.`);
+            renderCart();
+        }
+
+        async function loadInventory() {
+            try {
+                const response = await fetch('/api/inventory');
+                products = await response.json();
+                console.log(products)
+                renderInventory();
+            } catch (error) {
+                showMessage('Failed to load inventory. Check service connectivity.', 'error');
+            }
+        }
+
+        async function loadNotifications() {
+            try {
+                const response = await fetch('/api/notifications');
+                const items = await response.json();
+                if (!items.length) {
+                    notifications.innerHTML = '<p>No notifications yet.</p>';
+                    return;
+                }
+                notifications.innerHTML = `<ul>${items.map(note => `<li><strong>${note.orderId}</strong>: ${note.message} (<em>${new Date(note.timestamp).toLocaleString()}</em>)</li>`).join('')}</ul>`;
+            } catch (error) {
+                notifications.innerHTML = '<p>Unable to load notifications.</p>';
+            }
+        }
+
+        async function placeOrder() {
+            if (!cart.length) {
+                showMessage('Add products to the cart first.', 'error');
+                return;
+            }
+            const customerId = customerIdInput.value.trim();
+            if (!customerId) {
+                showMessage('Please enter a customer ID.', 'error');
+                return;
+            }
+
+            const amount = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+            const body = {
+                customerId,
+                amount,
+                items: cart
+            };
+
+            try {
+                placeOrderButton.disabled = true;
+                const response = await fetch('/api/order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    showMessage(result.message || 'Order placed successfully.');
+                    cart.length = 0;
+                    renderCart();
+                } else {
+                    showMessage(result.error || result.message || 'Order failed.', 'error');
+                }
+            } catch (error) {
+                showMessage('Order submission failed. Check service connectivity.', 'error');
+            } finally {
+                placeOrderButton.disabled = false;
+                await loadNotifications();
+            }
+        }
+
+        placeOrderButton.addEventListener('click', placeOrder);
+        loadInventory();
+        loadNotifications();
+    </script>
+</body>
+</html>

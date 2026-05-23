@@ -1,0 +1,96 @@
+# Visual Studio / .NET
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Build output
+bin/
+obj/
+**/bin/
+**/obj/
+
+# NuGet
+*.nupkg
+*.snupkg
+packages/
+# The packages folder can be ignored because of PackageReference
+**/packages/
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# Rider
+.idea/
+*.sln.iml
+
+# User-specific files
+*.swp
+*~
+*.tmp
+*.temp
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Docker
+**/docker-compose.override.yml
+**/Dockerfile
+**/.dockerignore
+
+# Environment
+.env
+*.env
+
+# JetBrains Rider
+.idea/
+
+# ASP.NET runtime
+appsettings.*.json
+
+# Debugger
+*.vspscc
+*.vssscc
+
+# Generated files
+*.dbmdl
+
+# Test result files
+TestResults/
+*.trx
+
+# Azure Pipelines
+.vscode/
+
+# GitHub Codespaces
+.devcontainer/
+
+# Exclude publish output
+**/publish/
+
+# exclude npm/node artifacts if any
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Exclude project-specific IDE stuff
+*.suo
+*.user
+*.userprefs
+
+# Optional: exclude docker compose artifacts
+docker-compose.override.yml
+
+# Coverage
+coverage*
+*.cov
+
+# Auto-generated files
+*.dotCover
+*.ncrunch*

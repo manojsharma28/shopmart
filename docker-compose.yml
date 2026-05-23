@@ -1,0 +1,118 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+    ports:
+      - "2181:2181"
+    networks:
+      - mart-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_CREATE_TOPICS: "order-notifications:1:1"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    networks:
+      - mart-network
+
+  payment-service:
+    build:
+      context: ./PaymentService
+      dockerfile: Dockerfile
+    image: payment-service:latest
+    depends_on:
+      - kafka
+    ports:
+      - "5001:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Kafka__BootstrapServers: kafka:9092
+    networks:
+      - mart-network
+
+  order-service:
+    build:
+      context: ./OrderService
+      dockerfile: Dockerfile
+    image: order-service:latest
+    depends_on:
+      - kafka
+      - payment-service
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Kafka__BootstrapServers: kafka:9092
+      PaymentService__Url: http://payment-service:8080/
+    networks:
+      - mart-network
+
+  notification-service:
+    build:
+      context: ./NotificationService
+      dockerfile: Dockerfile
+    image: notification-service:latest
+    depends_on:
+      - kafka
+    ports:
+      - "5002:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      Kafka__BootstrapServers: kafka:9092
+      Kafka__OrderNotificationTopic: order-notifications
+      Kafka__ConsumerGroupId: notification-service-group
+    networks:
+      - mart-network
+
+  inventory-service:
+    build:
+      context: .
+      dockerfile: InventoryService/Dockerfile
+    image: inventory-service:latest
+    depends_on:
+      - kafka
+    ports:
+      - "5003:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      Kafka__BootstrapServers: kafka:9092
+      Kafka__OrderNotificationTopic: order-notifications
+      Kafka__ConsumerGroupId: inventory-service-group
+    networks:
+      - mart-network
+
+  shopmart:
+    build:
+      context: ./ShopMart
+      dockerfile: Dockerfile
+    image: shopmart:latest
+    depends_on:
+      - inventory-service
+      - order-service
+      - notification-service
+    ports:
+      - "5004:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:8080
+      InventoryService__Url: http://inventory-service:8080/
+      OrderService__Url: http://order-service:8080/
+      NotificationService__Url: http://notification-service:8080/
+    networks:
+      - mart-network
+
+networks:
+  mart-network:
+    driver: bridge
