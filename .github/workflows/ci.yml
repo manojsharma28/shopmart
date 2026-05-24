@@ -2,32 +2,46 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [main]
+    branches: [ "main" ]
   pull_request:
-    branches: [main]
+    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+    # 1. Checkout repo
     - name: Checkout code
       uses: actions/checkout@v3
 
+    # 2. Set up Docker
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    - name: Build and push Docker images
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        push: false
-        tags: |
-          payment-service:latest
-          order-service:latest
-          notification-service:latest
-          inventory-service:latest
+    # 3. Build services
+    - name: Build Docker Compose services
+      run: docker-compose build
 
-    - name: Run tests (example for OrderService)
+    # 4. Run services in background
+    - name: Start services
+      run: docker-compose up -d
+
+    # 5. Wait for backend to be ready
+    - name: Wait for backend
       run: |
-        docker run --rm order-service:latest dotnet test /app/tests/OrderService.Tests/OrderService.Tests.csproj --logger "trx;LogFileName=TestResults.trx"
+        for i in {1..10}; do
+          curl -s http://localhost:5003/api/inventory/products && exit 0
+          sleep 5
+        done
+        exit 1
+
+    # 6. Run tests
+    - name: Run tests
+      run: |
+        docker-compose exec -T shopmart \
+          pytest tests/ --maxfail=1 --disable-warnings -q
+
+    # 7. Tear down
+    - name: Stop services
+      run: docker-compose down
