@@ -26,10 +26,12 @@ jobs:
       run: dotnet restore OrderService.Tests/OrderService.Tests.csproj
 
     - name: Build Docker Compose services
-      run: docker compose build
+      working-directory: ${{ github.workspace }}
+      run: docker compose -f docker-compose.yml build
 
     - name: Start services
-      run: docker compose up -d
+      working-directory: ${{ github.workspace }}
+      run: docker compose -f docker-compose.yml up -d
 
     - name: Wait for backend
       run: |
@@ -45,4 +47,5 @@ jobs:
       run: dotnet test OrderService.Tests/OrderService.Tests.csproj --configuration Release --no-restore
 
     - name: Tear down
-      run: docker compose down
+      working-directory: ${{ github.workspace }}
+      run: docker compose -f docker-compose.yml down
