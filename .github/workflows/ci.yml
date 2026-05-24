@@ -11,37 +11,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    # 1. Checkout repo
     - name: Checkout code
       uses: actions/checkout@v3
 
-    # 2. Set up Docker
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
 
-    # 3. Build services
+    - name: Restore .NET dependencies
+      run: dotnet restore
+
     - name: Build Docker Compose services
-      run: docker-compose build
+      run: docker compose build
 
-    # 4. Run services in background
     - name: Start services
-      run: docker-compose up -d
+      run: docker compose up -d
 
-    # 5. Wait for backend to be ready
     - name: Wait for backend
       run: |
-        for i in {1..10}; do
-          curl -s http://localhost:5003/api/inventory/products && exit 0
+        for i in $(seq 1 10); do
+          if curl -s http://localhost:5003/api/inventory/products; then
+            exit 0
+          fi
           sleep 5
         done
         exit 1
 
-    # 6. Run tests
-    - name: Run tests
-      run: |
-        docker-compose exec -T shopmart \
-          pytest tests/ --maxfail=1 --disable-warnings -q
+    - name: Run .NET unit tests
+      run: dotnet test OrderService.Tests/OrderService.Tests.csproj --configuration Release --no-restore
 
-    # 7. Tear down
-    - name: Stop services
-      run: docker-compose down
+    - name: Tear down
+      run: docker compose down
